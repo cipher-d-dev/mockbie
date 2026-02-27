@@ -12,6 +12,7 @@ import {
   PlusCircle,
   Layers,
   LayoutDashboard,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { sessionApi } from "@/lib/axios";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { student, logout, loading } = useAuth();
@@ -35,6 +37,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   }, [student, loading, router]);
 
   if (!student) return null;
+
+  const handleMonoSessionCreation = async () => {
+    const res = await sessionApi.post(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3500"}/api/sessions/mono/create`,
+      {
+        title: "New Mono Session",
+      },
+    );
+    const { _id } = res.data.session;
+    router.push(`/sessions/mono/${_id}`); // Redirect to the unique session page
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -86,7 +99,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-zinc-100" />
                 <DropdownMenuItem
-                  onClick={() => router.push("/admin/mono")}
+                  onClick={handleMonoSessionCreation}
                   className="rounded-lg py-2.5 cursor-pointer focus:bg-zinc-50"
                 >
                   <PlusCircle className="mr-3 h-4 w-4 text-zinc-400" />
@@ -101,6 +114,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <Layers className="mr-3 h-4 w-4 text-zinc-400" />
                   <span className="font-medium text-zinc-500">
                     Create Multi Session
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => router.push("/admin")}
+                  className="rounded-lg py-2.5 cursor-pointer focus:bg-zinc-50"
+                >
+                  <Lock className="mr-3 h-4 w-4 text-zinc-400" />
+                  <span className="font-medium text-zinc-500">
+                    View Admin Dashboard
                   </span>
                 </DropdownMenuItem>
               </DropdownMenuContent>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css"; // Global styles
 import { AuthProvider } from "@/context/AuthContext";
+import { SessionProvider } from "@/context/SessionContext";
 
 export const metadata: Metadata = {
   title: "Mockbie - AI-Powered Exam Proctoring",
@@ -16,7 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body suppressHydrationWarning>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider><SessionProvider>{children}</SessionProvider></AuthProvider>
       </body>
     </html>
   );

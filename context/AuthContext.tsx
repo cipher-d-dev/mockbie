@@ -5,8 +5,10 @@ import {
   useState,
   useLayoutEffect,
   ReactNode,
+  useEffect,
 } from "react";
 import { authApi } from "@/lib/axios";
+import { Bounce, toast } from "react-toastify";
 
 interface Student {
   id: string;
@@ -42,6 +44,58 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const customToastStyle = {
+    borderRadius: "8px",
+    fontSize: "14px",
+    fontFamily: "Inter, sans-serif",
+  };
+
+  // track navigator status
+  useEffect(() => {
+    const handleOnline = () => {
+      toast.dismiss("network-status-offline");
+      toast.success("Back online! Connection restored.", {
+        position: "top-center",
+        toastId: "network-status-online",
+        transition: Bounce,
+        autoClose: 1500,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        style: customToastStyle,
+        theme: "dark",
+      });
+    };
+    const handleOffline = () => {
+      toast.dismiss("network-status-online");
+      toast.error("You're offline! Please check your internet connection.", {
+        position: "top-center",
+        toastId: "network-status-offline",
+        transition: Bounce,
+        autoClose: false,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        style: customToastStyle,
+        theme: "dark",
+      });
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    if (!navigator.onLine) {
+      handleOffline();
+    }
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
   // Persist user
   useLayoutEffect(() => {
     const hydrateSession = async () => {
@@ -51,17 +105,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log("Hydrated student on boot:", response.data.student);
         setStudent(response.data.student);
       } catch (err) {
-        setError("No active session found on boot.");
+        if (
+            window.location.pathname !== "/" &&
+            window.location.pathname !== "/register"
+        ) {
+          setError("No active session found on boot.");
+        }
       } finally {
         setLoading(false);
       }
     };
     hydrateSession();
   }, []);
- 
+
   const patchStudent = async (updatedFields: Partial<any>) => {
     try {
-      const response = await authApi.patch(`/update/${student?.id}`, updatedFields);
+      const response = await authApi.patch(
+        `/update/${student?.id}`,
+        updatedFields,
+      );
       setStudent(response.data.student);
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to update user");
