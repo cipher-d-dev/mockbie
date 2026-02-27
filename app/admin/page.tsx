@@ -41,7 +41,7 @@ export default function AdminDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <div className="space-y-8 font-inter">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Admin Dashboard</h1>

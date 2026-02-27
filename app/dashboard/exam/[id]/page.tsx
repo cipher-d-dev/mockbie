@@ -2,57 +2,37 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useAuthStore } from '@/lib/store';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { motion } from 'motion/react';
 import { AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
 
-// Mock questions
-const mockQuestions = [
-  {
-    id: 1,
-    text: "What is the time complexity of binary search?",
-    options: ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
-    answer: "O(log n)"
-  },
-  {
-    id: 2,
-    text: "Which data structure uses LIFO?",
-    options: ["Queue", "Stack", "Tree", "Graph"],
-    answer: "Stack"
-  },
-  {
-    id: 3,
-    text: "What is the worst-case scenario for QuickSort?",
-    options: ["O(n)", "O(n log n)", "O(n^2)", "O(log n)"],
-    answer: "O(n^2)"
-  }
-];
-
 export default function ExamPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user } = useAuth();
   
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [timeLeft, setTimeLeft] = useState(3600); // 1 hour
+  const [timeLeft, setTimeLeft] = useState(3600);
   const [violations, setViolations] = useState<string[]>([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
 
-  // Cheating Detection Logic
+  // Get exam from user's exams array
+  const exam = user?.exams?.find((exam: any) => exam.id === id);
+  const questions = exam?.questions || [];
+
   const logViolation = useCallback((type: string) => {
     setViolations((prev) => [...prev, `${new Date().toLocaleTimeString()}: ${type}`]);
     setShowWarning(true);
     setTimeout(() => setShowWarning(false), 3000);
-    // In a real app, send this to the backend immediately
     console.log(`Violation detected: ${type}`);
   }, []);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !exam) {
       router.push('/');
       return;
     }
@@ -73,9 +53,8 @@ export default function ExamPage() {
       document.removeEventListener('paste', handlePaste);
       document.removeEventListener('contextmenu', handleContextMenu);
     };
-  }, [user, router, logViolation]);
+  }, [user, exam, router, logViolation]);
 
-  // Timer
   useEffect(() => {
     if (timeLeft <= 0 && !isSubmitted) {
       handleSubmit();
@@ -99,13 +78,12 @@ export default function ExamPage() {
 
   const handleSubmit = () => {
     setIsSubmitted(true);
-    // Send answers and violations to backend
     console.log('Exam submitted', { answers, violations });
   };
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4">
+      <div className="min-h-screen font-inter bg-zinc-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <div className="flex justify-center mb-4">
@@ -124,14 +102,25 @@ export default function ExamPage() {
     );
   }
 
-  const question = mockQuestions[currentQuestion];
+  if (!exam || questions.length === 0) {
+    return (
+      <div className="min-h-screen font-inter bg-zinc-50 flex items-center justify-center">
+        <Card>
+          <CardContent className="pt-6">
+            <p>Exam not found</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const question = questions[currentQuestion];
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col">
-      {/* Header */}
+    <div className="min-h-screen font-inter bg-zinc-50 flex flex-col">
       <header className="bg-white border-b border-zinc-200 sticky top-0 z-10">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="font-semibold text-zinc-900">Data Structures Midterm</div>
+          <div className="font-semibold text-zinc-900">{exam.title}</div>
           <div className="flex items-center gap-4">
             <div className={`flex items-center gap-2 font-mono text-lg ${timeLeft < 300 ? 'text-red-500' : 'text-zinc-900'}`}>
               <Clock className="w-5 h-5" />
@@ -144,7 +133,6 @@ export default function ExamPage() {
         </div>
       </header>
 
-      {/* Warning Toast */}
       {showWarning && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -157,11 +145,10 @@ export default function ExamPage() {
         </motion.div>
       )}
 
-      {/* Main Content */}
       <main className="flex-1 container mx-auto px-4 py-8 max-w-3xl">
         <div className="mb-8 flex justify-between items-center text-sm text-zinc-500">
-          <span>Question {currentQuestion + 1} of {mockQuestions.length}</span>
-          <span>Answered: {Object.keys(answers).length} / {mockQuestions.length}</span>
+          <span>Question {currentQuestion + 1} of {questions.length}</span>
+          <span>Answered: {Object.keys(answers).length} / {questions.length}</span>
         </div>
 
         <Card className="mb-8">
@@ -171,7 +158,7 @@ export default function ExamPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {question.options.map((option, index) => (
+            {question.options.map((option: string, index: number) => (
               <button
                 key={index}
                 onClick={() => handleSelectOption(option)}
@@ -203,8 +190,8 @@ export default function ExamPage() {
             Previous
           </Button>
           <Button
-            onClick={() => setCurrentQuestion((prev) => Math.min(mockQuestions.length - 1, prev + 1))}
-            disabled={currentQuestion === mockQuestions.length - 1}
+            onClick={() => setCurrentQuestion((prev) => Math.min(questions.length - 1, prev + 1))}
+            disabled={currentQuestion === questions.length - 1}
           >
             Next
           </Button>

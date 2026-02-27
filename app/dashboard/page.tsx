@@ -6,46 +6,47 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'motion/react';
 import { Calendar, Clock, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { useEffect, useState } from 'react';
+
+interface Exam {
+  id: string;
+  title: string;
+  category: string;
+  status: 'upcoming' | 'available' | 'completed';
+  date: string;
+  duration: string;
+  score?: number;
+  registered?: boolean;
+}
 
 export default function StudentDashboard() {
   const router = useRouter();
+  const { student, loading } = useAuth();
+  const [exams, setExams] = useState<Exam[]>([]);
 
-  const exams = [
-    {
-      id: '1',
-      title: 'Data Structures Midterm',
-      category: 'Computer Science',
-      date: '2026-03-01',
-      duration: '60 mins',
-      status: 'upcoming',
-      registered: true,
-    },
-    {
-      id: '2',
-      title: 'Algorithms Final',
-      category: 'Computer Science',
-      date: '2026-03-15',
-      duration: '120 mins',
-      status: 'available',
-      registered: false,
-    },
-    {
-      id: '3',
-      title: 'Introduction to AI',
-      category: 'Computer Science',
-      date: '2026-02-20',
-      duration: '90 mins',
-      status: 'completed',
-      registered: true,
-      score: '85/100',
+  useEffect(() => {
+    if (student?.exams) {
+      setExams(student.exams);
     }
-  ];
+  }, [student]);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-8">
+          <h1 className="text-3xl font-bold font-inter tracking-tight text-zinc-900">My Exams</h1>
+          <p className="text-zinc-500">Loading...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900">My Exams</h1>
+          <h1 className="text-3xl font-bold font-inter tracking-tight text-zinc-900">My Exams</h1>
           <p className="text-zinc-500 mt-2">View and manage your upcoming and past exams.</p>
         </div>
 

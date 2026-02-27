@@ -1,20 +1,27 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Mockbie - AI Studio App
 
-# Run and deploy your AI Studio app
+An intelligent mock API generator powered by Google's Gemini AI. Mockbie helps developers quickly create and deploy realistic mock APIs for testing and development without writing boilerplate code.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/033023f9-2887-4af1-9708-fe76dada4348
+- **AI-Powered API Generation**: Use natural language to describe your API requirements
+- **Instant Mock Endpoints**: Generate functional mock endpoints on demand
+- **Easy Local Development**: Run and test locally before deployment
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:** Node.js
 
 1. Install dependencies:
-   `npm install`
+   ```bash
+   npm install
+   ```
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
-   `npm run dev`
+   ```bash
+   npm run dev
+   ```
+
+## Repository
+
+GitHub: https://github.com/cipher-d-dev/mockbie.git
