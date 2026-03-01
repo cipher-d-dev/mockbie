@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { BookOpen, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ToastContainer, toast, Bounce } from "react-toastify";

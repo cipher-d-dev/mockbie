@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { AlertTriangle, Clock, CheckCircle2 } from 'lucide-react';
 
 export default function ExamPage() {

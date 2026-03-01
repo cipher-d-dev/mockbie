@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import {
   Users,
   FileText,
@@ -21,16 +21,26 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { sessionApi } from "@/lib/axios";
+import { useState } from "react";
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleMonoSessionCreation = async () => {
-    const res = await sessionApi.post(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3500"}/api/sessions/mono/create`, {
-      title: "New Mono Session",
-    });
-    const { _id } = res.data.session;
-    router.push(`/sessions/mono/${_id}`); // Redirect to the unique session page
+    if (isCreating) return;
+    setIsCreating(true);
+    try {
+      const res = await sessionApi.post(`/mono/create`, {
+        title: "New Mono Session",
+      });
+      const { _id } = res.data.session;
+      router.push(`/sessions/mono/${_id}`); // Redirect to the unique session page
+    } catch (err) {
+      console.error("Failed to create session", err);
+    } finally {
+      setIsCreating(false);
+    }
   };
   const stats = [
     {
@@ -107,6 +117,7 @@ export default function AdminDashboard() {
               variant="outline"
               className=" max-[1024px]:text-sm"
               onClick={handleMonoSessionCreation}
+              disabled={isCreating}
             >
               <Book className="w-4 h-4 mr-2" />
               Start Study Session

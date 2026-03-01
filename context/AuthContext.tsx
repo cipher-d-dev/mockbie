@@ -6,8 +6,9 @@ import {
   useLayoutEffect,
   ReactNode,
   useEffect,
+  useRef,
 } from "react";
-import { authApi } from "@/lib/axios";
+import { authApi, sessionApi } from "@/lib/axios";
 import { Bounce, toast } from "react-toastify";
 
 interface Student {
@@ -44,11 +45,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const tokenRef = useRef<string | null>(null);
+
   const customToastStyle = {
     borderRadius: "8px",
     fontSize: "14px",
     fontFamily: "Inter, sans-serif",
   };
+
+  useEffect(() => {
+    tokenRef.current = accessToken;
+  }, [accessToken]);
 
   // track navigator status
   useEffect(() => {
@@ -94,28 +101,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, []);
-
-  // Persist user
-  useLayoutEffect(() => {
-    const hydrateSession = async () => {
-      try {
-        const response = await authApi.post("/refresh");
-        setAccessToken(response.data.accessToken);
-        console.log("Hydrated student on boot:", response.data.student);
-        setStudent(response.data.student);
-      } catch (err) {
-        if (
-            window.location.pathname !== "/" &&
-            window.location.pathname !== "/register"
-        ) {
-          setError("No active session found on boot.");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    hydrateSession();
   }, []);
 
   const patchStudent = async (updatedFields: Partial<any>) => {
@@ -174,6 +159,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setAccessToken(null);
       setStudent(null);
       setLoading(false);
+      window.location.href = "/";
     }
   };
 
@@ -223,54 +209,75 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // useLayoutEffect runs before the browser repaints, preventing "token flash"
   useLayoutEffect(() => {
-    // 1. ATTACH TOKEN TO REQUESTS
-    const requestIntercept = authApi.interceptors.request.use(
-      (config) => {
-        // If we have a token in state, add it to the header
-        if (!config.headers["Authorization"] && accessToken) {
-          config.headers["Authorization"] = `Bearer ${accessToken}`;
+    let isMounted = true;
+
+    const setupInterceptors = (apiInstance: any) => {
+      // Request Interceptor
+      apiInstance.interceptors.request.use((config: any) => {
+        if (!config.headers["Authorization"] && tokenRef.current) {
+          config.headers["Authorization"] = `Bearer ${tokenRef.current}`;
         }
         return config;
-      },
-      (error) => Promise.reject(error),
-    );
+      });
 
-    // 2. HANDLE EXPIRED TOKEN (401)
-    const responseIntercept = authApi.interceptors.response.use(
-      (response) => response, // If request is successful, just return it
-      async (error) => {
-        const prevRequest = error?.config;
+      // Response Interceptor (Token Refresh Logic)
+      apiInstance.interceptors.response.use(
+        (res: any) => res,
+        async (err: any) => {
+          const prevRequest = err?.config;
+          const isRefreshRequest = prevRequest.url?.includes("/refresh") || prevRequest.url?.includes("/login") || prevRequest.url?.includes("/register");
 
-        // If status is 401 and we haven't tried refreshing yet
-        if (error?.response?.status === 401 && !prevRequest?.sent) {
-          prevRequest.sent = true; // Mark this request so we don't loop forever
+          // Avoid intercepting 401s on login/refresh itself to prevent loops
+          if (
+            err?.response?.status === 401 &&
+            !prevRequest?._retry &&
+            !isRefreshRequest
+          ) {
+            prevRequest._retry = true;
+            try {
+              const r = await authApi.post("/refresh");
+              const newToken = r.data.accessToken;
 
-          try {
-            // Call the Express refresh route (Cookie is sent automatically)
-            const response = await authApi.post("/refresh");
-            const newAccessToken = response.data.accessToken;
-
-            setAccessToken(newAccessToken);
-
-            // Update the failed request with the NEW token and retry it
-            prevRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
-            return authApi(prevRequest);
-          } catch (refreshError) {
-            // Refresh token is expired too (Redis key deleted or 7 days passed)
-            setAccessToken(null);
-            return Promise.reject(refreshError);
+              setAccessToken(newToken);
+              prevRequest.headers["Authorization"] = `Bearer ${newToken}`;
+              return apiInstance(prevRequest);
+            } catch (refreshErr) {
+              setAccessToken(null);
+              setStudent(null);
+              return Promise.reject(refreshErr);
+            }
           }
-        }
-        return Promise.reject(error);
-      },
-    );
-
-    // Cleanup interceptors on unmount
-    return () => {
-      authApi.interceptors.request.eject(requestIntercept);
-      authApi.interceptors.response.eject(responseIntercept);
+          return Promise.reject(err);
+        },
+      );
     };
-  }, [accessToken]); // Re-run when accessToken changes
+
+    // Attach Interceptors once
+    setupInterceptors(authApi);
+    setupInterceptors(sessionApi);
+
+    // Initial Session Hydration (Runs once on app boot)
+    const bootApp = async () => {
+      try {
+        const response = await authApi.post("/refresh");
+        if (isMounted) {
+          setAccessToken(response.data.accessToken);
+          setStudent(response.data.student);
+        }
+      } catch (err) {
+        // Only set error if we are on a protected route
+        const isPublic = ["/", "/register"].includes(window.location.pathname);
+        if (!isPublic) setError("Session expired. Please log in.");
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    bootApp();
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Re-run when accessToken changes
 
   return (
     <AuthContext.Provider

@@ -1,46 +1,64 @@
 "use client";
+import React, { use, useEffect, useState, useCallback } from "react";
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { FileUpload } from "@/components/sessions/FileUpload";
 import { QuizInterface } from "@/components/sessions/QuizInterface";
 import { ResultsView } from "@/components/sessions/ResultsView";
 import { Spinner } from "@/components/ui/spinner";
-import axios from "axios";
-import { use, useEffect, useState } from "react";
+import { sessionApi } from "@/lib/axios";
+import { useParams } from "next/navigation";
 
 export default function MonoSessionPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const parameter = useParams();
+  const id = parameter.id as string;
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Fetch the session using your router.get("/:id") route
-    const fetchSession = async () => {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3500"}/api/sessions/${params.id}`);
+  // Use useCallback so we can trigger this after file upload without reloading the page
+  const fetchSession = useCallback(async () => {
+    try {
+      const res = await sessionApi.get(`/${id}`);
       setSession(res.data.session);
+    } catch (err) {
+      console.error("Failed to fetch session", err);
+    } finally {
       setLoading(false);
-    };
+    }
+  }, [id]);
+
+  useEffect(() => {
     fetchSession();
-  }, [params.id]);
+  }, [fetchSession]);
 
-  if (loading) return <Spinner />;
+  // Wrap the entire return once.
+  return (
+    <DashboardLayout>
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Spinner />
+        </div>
+      ) : !session ? (
+        <p>Session not found</p>
+      ) : (
+        <>
+          {session.status === "draft" && (
+            <FileUpload
+              sessionId={id}
+              onComplete={fetchSession} // NO RELOAD: just re-fetch the data
+            />
+          )}
 
-  // Determine what to show based on backend status
-  if (session.status === "draft") {
-    return (
-      <FileUpload
-        sessionId={params.id}
-        onComplete={() => window.location.reload()}
-      />
-    );
-  }
+          {session.status === "active" && (
+            <QuizInterface sessionId={id} questions={session.questions} />
+          )}
 
-  if (session.status === "active") {
-    return (
-      <QuizInterface sessionId={params.id} questions={session.questions} />
-    );
-  }
-
-  return <ResultsView session={session} />;
+          {session.status === "completed" && <ResultsView session={session} />}
+        </>
+      )}
+    </DashboardLayout>
+  );
 }

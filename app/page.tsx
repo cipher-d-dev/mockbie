@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { BookOpen, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Bounce, toast, ToastContainer } from "react-toastify";
@@ -23,7 +23,7 @@ export default function LoginPage() {
   const [matricNumber, setMatricNumber] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { login, error, setError, setLoading, loading } = useAuth();
+  const { login, error, setLoading, loading } = useAuth();
   const router = useRouter();
 
   const customToastStyle = {
